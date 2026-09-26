@@ -13,10 +13,18 @@ if (!username || !password) {
 }
 
 const hash = await bcrypt.hash(password, 12);
+const { count, error: countError } = await supabase
+  .from('admins')
+  .select('id', { count: 'exact', head: true });
+
+if (countError) {
+  console.error('❌ Erreur:', countError.message);
+  process.exit(1);
+}
 
 const { data, error } = await supabase
   .from('admins')
-  .insert({ username: username.toLowerCase(), mot_de_passe: hash, nom_complet: nom_complet || username })
+  .insert({ username: username.toLowerCase(), mot_de_passe: hash, nom_complet: nom_complet || username, is_super_admin: count === 0 })
   .select()
   .single();
 

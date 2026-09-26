@@ -17,7 +17,7 @@ export async function adminLogin(req, res, next) {
 
     const { data: admin, error } = await supabase
       .from('admins')
-      .select('id, username, mot_de_passe, nom_complet')
+      .select('id, username, mot_de_passe, nom_complet, is_super_admin')
       .eq('username', username.trim().toLowerCase())
       .single();
 
@@ -32,10 +32,11 @@ export async function adminLogin(req, res, next) {
       role:        'admin',
       id:          admin.id,
       username:    admin.username,
-      nom_complet: admin.nom_complet
+      nom_complet: admin.nom_complet,
+      is_super_admin: admin.is_super_admin
     });
 
-    res.json({ ok: true, token, admin: { id: admin.id, username: admin.username, nom_complet: admin.nom_complet } });
+    res.json({ ok: true, token, admin: { id: admin.id, username: admin.username, nom_complet: admin.nom_complet, is_super_admin: admin.is_super_admin } });
   } catch (e) { next(e); }
 }
 

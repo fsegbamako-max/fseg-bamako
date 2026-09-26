@@ -79,6 +79,9 @@ export const admApi = {
   logout:          ()           => adminApi.post('/admin/auth/logout'),
   getMe:           ()           => adminApi.get('/admin/auth/me'),
   getStats:        ()           => adminApi.get('/admin/stats'),
+  getAdmins:       ()           => adminApi.get('/admin/admins'),
+  createAdmin:     (data)       => adminApi.post('/admin/admins', data),
+  deleteAdmin:     (id)         => adminApi.delete(`/admin/admins/${id}`),
 
   // Classes
   getClasses:      ()           => adminApi.get('/admin/classes'),

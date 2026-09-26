@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { supabase } from '../config/supabase.js';
 
 /**
  * Middleware : vérifie le JWT étudiant
@@ -41,5 +42,23 @@ export function requireAdmin(req, res, next) {
     next();
   } catch {
     return res.status(401).json({ ok: false, message: 'Token invalide ou expiré' });
+  }
+}
+
+export async function requireSuperAdmin(req, res, next) {
+  try {
+    const { data: admin, error } = await supabase
+      .from('admins')
+      .select('is_super_admin')
+      .eq('id', req.admin.id)
+      .single();
+
+    if (error || !admin?.is_super_admin) {
+      return res.status(403).json({ ok: false, message: 'Accès réservé au super-administrateur' });
+    }
+
+    next();
+  } catch (error) {
+    next(error);
   }
 }

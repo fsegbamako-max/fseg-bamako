@@ -29,6 +29,7 @@ import adminActusRoutes     from './routes/admin/actualites.routes.js';
 import adminDocumentsRoutes from './routes/admin/documents.routes.js';
 import adminClassesRoutes   from './routes/admin/classes.routes.js';
 import adminStatsRoutes     from './routes/admin/stats.routes.js';
+import adminAdminsRoutes    from './routes/admin/admins.routes.js';
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -85,6 +86,7 @@ app.use('/api/admin/actualites',adminActusRoutes);
 app.use('/api/admin/documents', adminDocumentsRoutes);
 app.use('/api/admin/classes',   adminClassesRoutes);
 app.use('/api/admin/stats',     adminStatsRoutes);
+app.use('/api/admin/admins',    adminAdminsRoutes);
 
 // ─── Errors ──────────────────────────────────────────────────
 app.use(notFound);

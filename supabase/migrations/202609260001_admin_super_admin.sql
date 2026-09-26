@@ -1,0 +1,7 @@
+ALTER TABLE admins
+  ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+UPDATE admins
+SET is_super_admin = TRUE
+WHERE id = (SELECT id FROM admins ORDER BY id LIMIT 1)
+  AND NOT EXISTS (SELECT 1 FROM admins WHERE is_super_admin = TRUE);

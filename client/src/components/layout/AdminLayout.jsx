@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, BarChart2, Calendar,
-  Newspaper, FileText, GraduationCap, Menu, X, LogOut, ChevronRight
+  Newspaper, FileText, GraduationCap, Menu, X, LogOut, ShieldCheck
 } from 'lucide-react';
 import { useAdminStore } from '../../store/authStore';
 import { admApi } from '../../services/api';
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/admin/emplois',     icon: Calendar,        label: 'Emplois du temps' },
   { to: '/admin/actualites',  icon: Newspaper,       label: 'Actualités'      },
   { to: '/admin/documents',   icon: FileText,        label: 'Documents officiels' },
+  { to: '/admin/administrateurs', icon: ShieldCheck, label: 'Administrateurs', superAdminOnly: true },
 ];
 
 export default function AdminLayout() {
@@ -57,7 +58,7 @@ export default function AdminLayout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3">
-          {navItems.map(({ to, icon: Icon, label, exact }) => (
+          {navItems.filter(item => !item.superAdminOnly || admin?.is_super_admin).map(({ to, icon: Icon, label, exact }) => (
             <NavLink
               key={to}
               to={to}

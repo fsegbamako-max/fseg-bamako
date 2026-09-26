@@ -44,6 +44,7 @@ import AdminEmplois    from './pages/admin/Emplois';
 import AdminClasses    from './pages/admin/Classes';
 import AdminActualites from './pages/admin/Actualites';
 import AdminDocuments  from './pages/admin/Documents';
+import AdminAdministrateurs from './pages/admin/Administrateurs';
 
 export default function App() {
   return (
@@ -110,6 +111,7 @@ export default function App() {
             <Route path="/admin/actualites"     element={<AdminActualites />} />
             <Route path="/admin/documents"      element={<AdminDocuments />} />
             <Route path="/admin/documents.php"  element={<AdminDocuments />} />
+            <Route path="/admin/administrateurs" element={<AdminAdministrateurs />} />
           </Route>
         </Route>
 

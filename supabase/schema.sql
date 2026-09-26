@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS admins (
   username      TEXT UNIQUE NOT NULL,
   mot_de_passe  TEXT NOT NULL, -- bcrypt hash
   nom_complet   TEXT,
+  is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
