@@ -298,18 +298,56 @@ export async function importNotes(req, res, next) {
 
 export async function listImports(req, res, next) {
   try {
-    const { data, error } = await supabase.from('imports_notes').select('*, classes(nom_classe), semestres(numero)').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('imports_notes')
+      .select('id, id_classe, id_semestre, fichier, created_at, classes(nom_classe), semestres(numero), matieres(id, code_colonne, nom_matiere)')
+      .order('created_at', { ascending: false });
     if (error) throw error;
+    res.json({ ok: true, data });
+  } catch (e) { next(e); }
+}
+
+export async function renameImportedSubject(req, res, next) {
+  try {
+    const importId = Number(req.params.id);
+    const subjectId = Number(req.params.subjectId);
+    const name = typeof req.body.nom_matiere === 'string' ? req.body.nom_matiere.trim() : '';
+    if (!Number.isInteger(importId) || importId < 1 || !Number.isInteger(subjectId) || subjectId < 1) {
+      return res.status(400).json({ ok: false, message: 'Identifiant d’import ou de matière invalide' });
+    }
+    if (!name || name.length > 120) {
+      return res.status(400).json({ ok: false, message: 'Le nom de la matière doit contenir entre 1 et 120 caractères' });
+    }
+
+    const { data, error } = await supabase
+      .from('matieres')
+      .update({ nom_matiere: name })
+      .eq('id', subjectId)
+      .eq('id_import', importId)
+      .select('id, code_colonne, nom_matiere')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, message: 'Matière introuvable pour cet import' });
     res.json({ ok: true, data });
   } catch (e) { next(e); }
 }
 
 export async function deleteImport(req, res, next) {
   try {
-    const { data: imp } = await supabase.from('imports_notes').select('id, fichier').eq('id', req.params.id).single();
-    if (imp?.fichier) await deleteFromStorage(imp.fichier);
-    // Supprimer les matières et notes associées (CASCADE en DB)
-    await supabase.from('imports_notes').delete().eq('id', req.params.id);
+    const importId = Number(req.params.id);
+    if (!Number.isInteger(importId) || importId < 1) {
+      return res.status(400).json({ ok: false, message: 'Identifiant d’import invalide' });
+    }
+    const { data: imp, error: lookupError } = await supabase
+      .from('imports_notes')
+      .select('id, fichier')
+      .eq('id', importId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!imp) return res.status(404).json({ ok: false, message: 'Import introuvable' });
+    const { error } = await supabase.from('imports_notes').delete().eq('id', importId);
+    if (error) throw error;
+    if (imp.fichier) await deleteFromStorage(imp.fichier);
     res.json({ ok: true });
   } catch (e) { next(e); }
 }

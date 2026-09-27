@@ -2,3 +2,28 @@
 .env
 .env.*
 !.env.example
+
+
+# Secrets — ne JAMAIS committer
+.env.local
+.env.*.local
+server/.env
+client/.env
+
+# Dépendances
+node_modules/
+**/node_modules/
+
+# Build
+client/dist/
+client/build/
+
+# Système / éditeurs
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*

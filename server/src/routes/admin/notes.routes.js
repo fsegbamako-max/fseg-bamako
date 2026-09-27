@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   listNotes, createNote, updateNote, deleteNote,
   addFile, updateFile, deleteFile,
-  previewNotesImport, importNotes, listImports, deleteImport
+  previewNotesImport, importNotes, listImports, renameImportedSubject, deleteImport
 } from '../../controllers/admin/notes.controller.js';
 import { requireAdmin } from '../../middleware/auth.js';
 import { uploadDocument, uploadExcel } from '../../middleware/upload.js';
@@ -21,6 +21,7 @@ router.delete('/files/:fileId', deleteFile);
 
 // Imports de notes individuelles (Excel)
 router.get('/imports',       listImports);
+router.patch('/imports/:id/subjects/:subjectId', renameImportedSubject);
 router.post('/import/preview', uploadExcel.single('fichier'), previewNotesImport);
 router.post('/import',       uploadExcel.single('fichier'), importNotes);
 router.delete('/import/:id', deleteImport);

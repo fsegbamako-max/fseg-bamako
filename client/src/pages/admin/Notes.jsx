@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BarChart2, Upload, FileSpreadsheet, ScanSearch, CheckCircle2 } from 'lucide-react';
+import { BarChart2, Upload, FileSpreadsheet, ScanSearch, CheckCircle2, ExternalLink, Trash2, Pencil, Check, X } from 'lucide-react';
 import { admApi } from '../../services/api';
 import { toast } from '../../store/toastStore';
 import PublicationManager from '../../components/admin/PublicationManager';
@@ -17,10 +17,38 @@ export default function AdminNotes() {
   const [notesFile, setNotesFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [subjectNames, setSubjectNames] = useState([]);
+  const [editingSubject, setEditingSubject] = useState(null);
+  const [subjectDraft, setSubjectDraft] = useState('');
   const importRef  = useRef();
   const qc         = useQueryClient();
 
   const { data: classes } = useQuery({ queryKey: ['admin-classes'], queryFn: () => admApi.getClasses().then(r => r.data.data) });
+
+  const { data: noteImports, isLoading: loadingNoteImports, isError: noteImportsError } = useQuery({
+    queryKey: ['admin-note-imports'],
+    queryFn: () => admApi.getNotesImports().then(r => r.data.data),
+    enabled: tab === 'import'
+  });
+
+  const deleteImportMutation = useMutation({
+    mutationFn: admApi.deleteNotesImport,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-note-imports'] });
+      toast.success('Import supprimé avec ses matières et notes associées.');
+    },
+    onError: error => toast.error(`Suppression échouée. ${error.response?.data?.message || error.message || 'Erreur inconnue'}`)
+  });
+
+  const renameSubjectMutation = useMutation({
+    mutationFn: ({ importId, subjectId, name }) => admApi.renameImportedSubject(importId, subjectId, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-note-imports'] });
+      setEditingSubject(null);
+      setSubjectDraft('');
+      toast.success('Nom de la matière modifié.');
+    },
+    onError: error => toast.error(`Modification échouée. ${error.response?.data?.message || error.message || 'Erreur inconnue'}`)
+  });
 
   function handleNotesFileChange(event) {
     setNotesFile(event.target.files?.[0] || null);
@@ -68,6 +96,7 @@ export default function AdminNotes() {
     try {
       const res = await admApi.importNotes(form);
       toast.success(res.data.message || 'Import des notes terminé avec succès.');
+      qc.invalidateQueries({ queryKey: ['admin-note-imports'] });
       setNotesFile(null);
       setAnalysis(null);
       setSubjectNames([]);
@@ -78,6 +107,24 @@ export default function AdminNotes() {
         : error.response?.data?.message || error.message || 'Erreur inconnue';
       toast.error(`Import échoué. ${message}`);
     } finally { setLoading(false); }
+  }
+
+  function confirmDeleteImport(item) {
+    const filename = noteImportFileName(item.fichier);
+    if (window.confirm(`Supprimer l’import « ${filename} », ses matières et toutes les notes associées ?`)) {
+      deleteImportMutation.mutate(item.id);
+    }
+  }
+
+  function startRename(importId, subject) {
+    setEditingSubject({ importId, subjectId: subject.id });
+    setSubjectDraft(subject.nom_matiere);
+  }
+
+  function saveSubjectName(importId, subjectId) {
+    const name = subjectDraft.trim();
+    if (!name) { toast.error('Le nom de la matière ne peut pas être vide.'); return; }
+    renameSubjectMutation.mutate({ importId, subjectId, name });
   }
 
   return (
@@ -199,8 +246,97 @@ export default function AdminNotes() {
               </div>
             </section>
           )}
+
+          <section className="mt-8 border-t border-gray-200 pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="font-semibold text-gray-900">Fichiers importés</h3>
+                <p className="text-xs text-gray-500 mt-1">{noteImports?.length || 0} import(s)</p>
+              </div>
+            </div>
+
+            {loadingNoteImports ? <div className="flex justify-center py-8"><Spinner /></div> : noteImportsError ? (
+              <p className="py-8 text-center text-sm text-red-700">Impossible de charger les imports. Actualisez la page et réessayez.</p>
+            ) : noteImports?.length ? (
+              <div className="space-y-3">
+                {noteImports.map(item => (
+                  <article key={item.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <FileSpreadsheet className="w-4 h-4 mt-0.5 text-emerald-700 shrink-0" />
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">{noteImportFileName(item.fichier)}</h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {item.classes?.nom_classe || 'Classe inconnue'} · Semestre {item.semestres?.numero || '—'} · {formatNoteImportDate(item.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {item.fichier && (
+                          <a href={item.fichier} target="_blank" rel="noopener noreferrer" title="Ouvrir le fichier importé"
+                            aria-label={`Ouvrir ${noteImportFileName(item.fichier)}`} className="p-2 text-gray-500 hover:text-fseg-green rounded-md hover:bg-gray-100">
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button type="button" onClick={() => confirmDeleteImport(item)} disabled={deleteImportMutation.isPending}
+                          title="Supprimer l’import et ses notes" aria-label={`Supprimer ${noteImportFileName(item.fichier)}`}
+                          className="p-2 text-gray-500 hover:text-red-600 rounded-md hover:bg-red-50 disabled:opacity-50">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 border-t border-gray-100">
+                      {item.matieres?.length ? item.matieres.map(subject => {
+                        const isEditing = editingSubject?.importId === item.id && editingSubject.subjectId === subject.id;
+                        return (
+                          <div key={subject.id} className="flex flex-wrap items-center gap-2 py-2 border-b border-gray-50 last:border-0">
+                            <span className="w-20 text-xs text-gray-500">Matière {subject.code_colonne}</span>
+                            {isEditing ? (
+                              <>
+                                <input autoFocus maxLength={120} value={subjectDraft} onChange={event => setSubjectDraft(event.target.value)}
+                                  aria-label={`Nouveau nom de ${subject.nom_matiere}`}
+                                  className="flex-1 min-w-40 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                                <button type="button" onClick={() => saveSubjectName(item.id, subject.id)} disabled={renameSubjectMutation.isPending}
+                                  title="Enregistrer le nom" aria-label="Enregistrer le nom"
+                                  className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md disabled:opacity-50"><Check className="w-4 h-4" /></button>
+                                <button type="button" onClick={() => { setEditingSubject(null); setSubjectDraft(''); }}
+                                  title="Annuler" aria-label="Annuler"
+                                  className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><X className="w-4 h-4" /></button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">{subject.nom_matiere}</span>
+                                <button type="button" onClick={() => startRename(item.id, subject)} title="Modifier le nom de la matière"
+                                  aria-label={`Modifier ${subject.nom_matiere}`} className="p-2 text-gray-500 hover:text-fseg-green hover:bg-gray-100 rounded-md">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      }) : <p className="py-3 text-xs text-gray-500">Aucune matière associée à cet import.</p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="py-8 text-center text-sm text-gray-500">Aucun fichier de notes importé.</p>}
+          </section>
         </div>
       )}
     </div>
   );
+}
+
+function noteImportFileName(value) {
+  const storedName = value?.split('/').pop()?.split('?')[0];
+  if (!storedName) return 'Fichier de notes';
+  try { return decodeURIComponent(storedName).replace(/^\d+_/, ''); }
+  catch { return storedName.replace(/^\d+_/, ''); }
+}
+
+function formatNoteImportDate(value) {
+  if (!value) return 'Date inconnue';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }

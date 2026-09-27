@@ -49,6 +49,13 @@ app.use('/api/auth', rateLimit({
   max: 20,
   message: { ok: false, message: 'Trop de tentatives, réessayez dans 15 minutes' }
 }));
+app.use('/api/admin/auth/login', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Trop de tentatives, réessayez dans 15 minutes' }
+}));
 app.use('/api', rateLimit({
   windowMs: 60 * 1000,
   max: 200,

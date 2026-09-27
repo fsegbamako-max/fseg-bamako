@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, UserPlus, User, Calendar } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, User } from 'lucide-react';
 import { studentApi } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/ui/Button';
@@ -20,7 +20,8 @@ export default function Register() {
   const [dateNaissance,  setDateNaissance]  = useState('');
 
   // Données étudiant trouvé
-  const [etudiant, setEtudiant] = useState(null); // { id, prenom, nom, date_naissance }
+  const [etudiant, setEtudiant] = useState(null); // { prenom, nom }
+  const [registrationToken, setRegistrationToken] = useState('');
 
   // Champs étape 3
   const [telephone,   setTelephone]   = useState('');
@@ -44,10 +45,11 @@ export default function Register() {
     setLoading(true);
     try {
       const res = await studentApi.verifierEtudiant({ matricule: matricule.trim(), date_naissance: dateNaissance });
-      const { status, etudiant: etu } = res.data;
+      const { status, etudiant: etu, registrationToken: token } = res.data;
 
       if (status === 'found') {
         setEtudiant(etu);
+        setRegistrationToken(token);
         setStep(2);
       } else if (status === 'already_active') {
         setError('Vous avez déjà un compte. Connectez-vous.');
@@ -89,7 +91,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const res = await studentApi.register({ id_etudiant: etudiant.id, telephone, mot_de_passe: password });
+      const res = await studentApi.register({ registrationToken, telephone, mot_de_passe: password });
       loginSuccess(res.data.token, res.data);
       navigate('/etudiants/tableau-de-bord', { replace: true });
     } catch (err) {
@@ -102,6 +104,7 @@ export default function Register() {
   function reset() {
     setStep(1);
     setEtudiant(null);
+    setRegistrationToken('');
     setError('');
     setMatricule('');
     setDateNaissance('');
@@ -173,10 +176,6 @@ export default function Register() {
                   <div>
                     <p className="font-bold text-gray-900">
                       {etudiant.prenom} {etudiant.nom}
-                    </p>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Calendar className="w-3 h-3" />
-                      Né(e) le {new Date(etudiant.date_naissance).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
                 </div>

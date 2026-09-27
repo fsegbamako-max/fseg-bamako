@@ -124,6 +124,9 @@ export const admApi = {
   deleteFileNote:  (fileId)     => adminApi.delete(`/admin/notes/files/${fileId}`),
   previewNotesImport: (form)    => adminApi.post('/admin/notes/import/preview', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }),
   importNotes:     (form)       => adminApi.post('/admin/notes/import', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 }),
+  getNotesImports: ()           => adminApi.get('/admin/notes/imports'),
+  deleteNotesImport: (id)       => adminApi.delete(`/admin/notes/import/${id}`),
+  renameImportedSubject: (id, subjectId, nom_matiere) => adminApi.patch(`/admin/notes/imports/${id}/subjects/${subjectId}`, { nom_matiere }),
 
   // Emplois
   getEmplois:      (params)     => adminApi.get('/admin/emplois', { params }),

@@ -81,7 +81,16 @@ export async function verifierEtudiant(req, res, next) {
       .single();
 
     if (!compte) {
-      return res.json({ status: 'found', etudiant: eo });
+      const registrationToken = jwt.sign(
+        { role: 'registration', id_etudiant: eo.id },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({
+        status: 'found',
+        etudiant: { prenom: eo.prenom, nom: eo.nom },
+        registrationToken
+      });
     }
     if (compte.supprime) return res.json({ status: 'deleted' });
     if (!compte.actif)   return res.json({ status: 'disabled' });
@@ -92,10 +101,21 @@ export async function verifierEtudiant(req, res, next) {
 
 export async function register(req, res, next) {
   try {
-    const { id_etudiant, mot_de_passe, telephone } = req.body;
-    if (!id_etudiant || !mot_de_passe) {
+    const { registrationToken, mot_de_passe, telephone } = req.body;
+    if (!registrationToken || typeof mot_de_passe !== 'string') {
       return res.status(400).json({ ok: false, message: 'Données invalides' });
     }
+
+    let registration;
+    try {
+      registration = jwt.verify(registrationToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ ok: false, message: 'Vérification expirée, recommencez' });
+    }
+    if (registration.role !== 'registration' || !registration.id_etudiant) {
+      return res.status(401).json({ ok: false, message: 'Vérification invalide' });
+    }
+
     if (mot_de_passe.length < 6) {
       return res.status(400).json({ ok: false, message: 'Mot de passe trop court (6 caractères min)' });
     }
@@ -108,7 +128,7 @@ export async function register(req, res, next) {
     const { data: eo } = await supabase
       .from('etudiants_officiels')
       .select('id, id_classe')
-      .eq('id', id_etudiant)
+      .eq('id', registration.id_etudiant)
       .single();
 
     if (!eo) {
