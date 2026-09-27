@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase.js';
+import { normalizeStudentDate } from '../utils/studentData.js';
 
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -65,10 +66,10 @@ export async function verifierEtudiant(req, res, next) {
       .from('etudiants_officiels')
       .select('id, prenom, nom, date_naissance')
       .eq('matricule', matricule.trim().toUpperCase())
-      .eq('date_naissance', date_naissance)
       .single();
 
-    if (!eo) {
+    const expectedDate = normalizeStudentDate(date_naissance);
+    if (!eo || !expectedDate || normalizeStudentDate(eo.date_naissance) !== expectedDate) {
       return res.json({ status: 'not_found' });
     }
 
@@ -213,7 +214,8 @@ export async function forgotPassword(req, res, next) {
     if (e.prenom.localeCompare(prenom.trim(), undefined, { sensitivity: 'base' }) !== 0) {
       return res.status(400).json({ ok: false, message: 'Prénom incorrect' });
     }
-    if (e.date_naissance !== date_naissance) {
+    const expectedDate = normalizeStudentDate(date_naissance);
+    if (!expectedDate || normalizeStudentDate(e.date_naissance) !== expectedDate) {
       return res.status(400).json({ ok: false, message: 'Date de naissance incorrecte' });
     }
 

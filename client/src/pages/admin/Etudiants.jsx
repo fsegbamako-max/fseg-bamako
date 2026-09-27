@@ -1,17 +1,20 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, Upload, Download, UserX, UserCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Pencil, Upload, Download, UserX, UserCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { admApi } from '../../services/api';
 import { toast } from '../../store/toastStore';
 import Button  from '../../components/ui/Button';
 import Input   from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
+import Modal from '../../components/ui/Modal';
+import { useForm } from 'react-hook-form';
 
 export default function AdminEtudiants() {
   const [tab,       setTab]       = useState('liste');     // 'liste' | 'comptes'
   const [search,    setSearch]    = useState('');
   const [classe,    setClasse]    = useState('');
   const [page,      setPage]      = useState(1);
+  const [studentModal, setStudentModal] = useState(null);
   const importRef   = useRef();
   const qc          = useQueryClient();
 
@@ -34,6 +37,22 @@ export default function AdminEtudiants() {
     onSuccess:  () => { qc.invalidateQueries(['admin-comptes']); toast.success('Compte mis à jour'); },
     onError:    (e) => toast.error(e.response?.data?.message || 'Erreur')
   });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: admApi.deleteEtudiant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-etudiants'] });
+      toast.success('Étudiant supprimé');
+    },
+    onError: error => toast.error(error.response?.data?.message || 'Suppression impossible')
+  });
+
+  function confirmDeleteStudent(student) {
+    const name = `${student.prenom} ${student.nom}`.trim();
+    if (window.confirm(`Supprimer définitivement la fiche de ${name} et son compte étudiant associé ?`)) {
+      deleteStudentMutation.mutate(student.id);
+    }
+  }
 
   async function handleImport(e) {
     const file = e.target.files?.[0];
@@ -64,9 +83,12 @@ export default function AdminEtudiants() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Étudiants</h1>
         <div className="flex gap-2">
+          <Button size="sm" onClick={() => setStudentModal({ mode: 'create' })}>
+            <Plus className="w-4 h-4" /> Ajouter étudiant
+          </Button>
           <Button variant="secondary" onClick={handleExport} size="sm">
             <Download className="w-4 h-4" /> Exporter
           </Button>
@@ -119,7 +141,13 @@ export default function AdminEtudiants() {
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">N°</th>
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Matricule</th>
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Prénom Nom</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">CENOU</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Date de naissance</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Lieu de naissance</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Passage</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Amphi</th>
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Classe</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -128,7 +156,25 @@ export default function AdminEtudiants() {
                           <td className="px-4 py-3 text-gray-400">{e.numero_ordre}</td>
                           <td className="px-4 py-3 font-mono font-medium text-gray-900">{e.matricule}</td>
                           <td className="px-4 py-3 text-gray-700">{e.prenom} {e.nom}</td>
+                          <td className="px-4 py-3 text-gray-500">{e.cenou || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500">{e.date_naissance || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500">{e.lieu_naissance || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500">{e.passage || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500">{e.amphi || '—'}</td>
                           <td className="px-4 py-3 text-gray-500">{e.classes?.nom_classe}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button type="button" title="Modifier l’étudiant" aria-label={`Modifier ${e.prenom} ${e.nom}`}
+                              onClick={() => setStudentModal({ mode: 'edit', data: e })}
+                              className="inline-flex p-2 text-gray-400 hover:text-fseg-green hover:bg-gray-100 rounded-lg">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button type="button" title="Supprimer l’étudiant" aria-label={`Supprimer ${e.prenom} ${e.nom}`}
+                              disabled={deleteStudentMutation.isPending}
+                              onClick={() => confirmDeleteStudent(e)}
+                              className="inline-flex p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -215,6 +261,88 @@ export default function AdminEtudiants() {
           )}
         </>
       )}
+
+      <Modal
+        open={!!studentModal}
+        onClose={() => setStudentModal(null)}
+        title={studentModal?.mode === 'edit' ? 'Modifier un étudiant' : 'Ajouter un étudiant'}
+        size="lg"
+      >
+        <EtudiantForm
+          initial={studentModal?.data}
+          mode={studentModal?.mode}
+          classes={classes || []}
+          selectedClass={classe}
+          onClose={() => setStudentModal(null)}
+        />
+      </Modal>
     </div>
   );
+}
+
+function EtudiantForm({ initial, mode, classes, selectedClass, onClose }) {
+  const qc = useQueryClient();
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: {
+      ...initial,
+      id_classe: initial?.id_classe || selectedClass || '',
+      date_naissance: dateInputValue(initial?.date_naissance)
+    }
+  });
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(values) {
+    setLoading(true);
+    const { matricule, ...studentData } = values;
+    try {
+      if (mode === 'edit') await admApi.updateEtudiant(initial.id, studentData);
+      else await admApi.createEtudiant({ ...studentData, matricule });
+      await qc.invalidateQueries({ queryKey: ['admin-etudiants'] });
+      toast.success(mode === 'edit' ? 'Étudiant modifié' : 'Étudiant ajouté');
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Enregistrement impossible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Input label="Matricule" disabled={mode === 'edit'} error={errors.matricule?.message}
+        {...register('matricule', { required: mode === 'create' ? 'Matricule requis' : false })} />
+      <Input label="Numéro d’ordre" inputMode="numeric" {...register('numero_ordre')} />
+      <Input label="Prénom" error={errors.prenom?.message}
+        {...register('prenom', { required: 'Prénom requis' })} />
+      <Input label="Nom" error={errors.nom?.message}
+        {...register('nom', { required: 'Nom requis' })} />
+      <Input label="CENOU" {...register('cenou')} />
+      <Input label="Date de naissance" type="date" {...register('date_naissance')} />
+      <Input label="Lieu de naissance" {...register('lieu_naissance')} />
+      <Input label="Passage" {...register('passage')} />
+      <Input label="Amphi" {...register('amphi')} />
+      <div className="flex flex-col gap-1">
+        <label htmlFor="student-class" className="text-sm font-medium text-gray-700">Classe</label>
+        <select id="student-class" {...register('id_classe', { required: 'Classe requise' })}
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500">
+          <option value="">Choisir une classe</option>
+          {classes.map(item => <option key={item.id} value={item.id}>{item.nom_classe}</option>)}
+        </select>
+        {errors.id_classe && <p className="text-xs text-red-600">{errors.id_classe.message}</p>}
+      </div>
+      <div className="sm:col-span-2 flex gap-2 pt-2">
+        <Button variant="secondary" type="button" onClick={onClose} className="flex-1">Annuler</Button>
+        <Button type="submit" loading={loading} className="flex-1">{mode === 'edit' ? 'Enregistrer' : 'Ajouter'}</Button>
+      </div>
+    </form>
+  );
+}
+
+function dateInputValue(value) {
+  if (!value) return '';
+  const iso = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const local = String(value).match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
+  if (local) return `${local[3]}-${local[2].padStart(2, '0')}-${local[1].padStart(2, '0')}`;
+  return '';
 }

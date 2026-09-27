@@ -35,12 +35,12 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-fseg-green text-white z-50 flex flex-col transition-transform duration-300
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:flex`}>
+      <aside id="admin-sidebar" className={`fixed inset-y-0 left-0 h-full w-64 bg-fseg-green text-white z-50 flex-col transition-transform duration-300
+        ${sidebarOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'} md:flex md:translate-x-0`}>
 
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -51,7 +51,7 @@ export default function AdminLayout() {
               <p className="text-xs text-white/60">Administration</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/60 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} aria-label="Fermer le menu" className="md:hidden text-white/60 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -94,16 +94,16 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:ml-64">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500 hover:text-gray-700">
+        <header className="fixed top-0 left-0 right-0 md:left-64 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 z-30 shadow-sm">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu" aria-controls="admin-sidebar" aria-expanded={sidebarOpen} className="md:hidden text-gray-500 hover:text-gray-700">
             <Menu className="w-5 h-5" />
           </button>
           <span className="text-sm text-gray-500">Panel d'administration</span>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-auto p-4 pt-16 md:p-6 md:pt-16">
           <Outlet />
         </main>
       </div>

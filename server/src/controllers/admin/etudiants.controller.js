@@ -2,6 +2,19 @@ import bcrypt from 'bcryptjs';
 import { supabase } from '../../config/supabase.js';
 import { uploadToStorage, deleteFromStorage } from '../../services/storage.service.js';
 import xlsx from 'xlsx';
+import { normalizeStudentDate, normalizeStudentRow } from '../../utils/studentData.js';
+
+const requiredImportFields = {
+  numero_ordre: 'Numéro d’ordre (numero_ordre)',
+  matricule: 'Matricule',
+  cenou: 'Cenou',
+  prenom: 'Prénom (prenom)',
+  nom: 'Nom',
+  date_naissance: 'Date de naissance (date_naissance)',
+  lieu_naissance: 'Lieu de naissance (lieu_naissance)',
+  passage: 'Passage',
+  amphi: 'Amphi'
+};
 
 export async function listEtudiants(req, res, next) {
   try {
@@ -10,7 +23,7 @@ export async function listEtudiants(req, res, next) {
 
     let query = supabase
       .from('etudiants_officiels')
-      .select('id, matricule, prenom, nom, numero_ordre, id_classe, classes(nom_classe)', { count: 'exact' })
+      .select('id, matricule, prenom, nom, numero_ordre, cenou, date_naissance, lieu_naissance, passage, amphi, id_classe, classes(nom_classe)', { count: 'exact' })
       .order('numero_ordre')
       .range(from, from + parseInt(limit) - 1);
 
@@ -74,7 +87,23 @@ export async function updateEtudiant(req, res, next) {
 
 export async function deleteEtudiant(req, res, next) {
   try {
-    await supabase.from('etudiants_officiels').delete().eq('id', req.params.id);
+    const { data: comptes, error: comptesError } = await supabase
+      .from('comptes_etudiants')
+      .select('photo_profil')
+      .eq('id_etudiant', req.params.id);
+    if (comptesError) throw comptesError;
+    for (const compte of comptes || []) {
+      if (compte.photo_profil) await deleteFromStorage(compte.photo_profil);
+    }
+
+    const { data, error } = await supabase
+      .from('etudiants_officiels')
+      .delete()
+      .eq('id', req.params.id)
+      .select('id')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, message: 'Étudiant introuvable' });
     res.json({ ok: true });
   } catch (e) { next(e); }
 }
@@ -105,23 +134,42 @@ export async function importEtudiants(req, res, next) {
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
     const rows     = xlsx.utils.sheet_to_json(sheet, { defval: '' });
 
+    const headers = normalizeStudentRow(Object.fromEntries(Object.keys(rows[0] || {}).map(header => [header, true])));
+    const missingFields = Object.keys(requiredImportFields).filter(field => headers[field] === undefined);
+    if (missingFields.length) {
+      const missingColumns = missingFields.map(field => requiredImportFields[field]);
+      return res.status(400).json({
+        ok: false,
+        message: `Import annulé. Colonnes obligatoires manquantes : ${missingColumns.join(', ')}. Aucune donnée n’a été modifiée.`,
+        missingColumns
+      });
+    }
+
     let imported = 0, skipped = 0;
     for (const row of rows) {
-      const matricule = String(row['Matricule'] || row['matricule'] || '').trim().toUpperCase();
-      const prenom    = String(row['Prénom']   || row['prenom']   || row['Prenom']   || '').trim();
-      const nom       = String(row['Nom']      || row['nom']      || '').trim();
+      const values    = normalizeStudentRow(row);
+      const matricule = String(values.matricule || '').trim().toUpperCase();
+      const prenom    = String(values.prenom || '').trim();
+      const nom       = String(values.nom || '').trim();
       if (!matricule || !prenom || !nom) { skipped++; continue; }
 
-      const { error } = await supabase.from('etudiants_officiels').upsert({
+      const student = {
         matricule, prenom, nom,
-        id_classe: parseInt(id_classe),
-        numero_ordre: parseInt(row['N°'] || row['Numéro'] || row['numero_ordre'] || 0) || null,
-        cenou: String(row['Cenou'] || row['cenou'] || '').trim() || null,
-        date_naissance: String(row['Date naissance'] || row['date_naissance'] || '').trim() || null,
-        lieu_naissance: String(row['Lieu naissance'] || row['lieu_naissance'] || '').trim() || null,
-        passage: String(row['Passage'] || row['passage'] || '').trim() || null,
-        amphi:   String(row['Amphi']   || row['amphi']   || '').trim() || null,
-      }, { onConflict: 'matricule' });
+        id_classe: parseInt(id_classe)
+      };
+
+      if (values.numero_ordre !== undefined) student.numero_ordre = parseInt(values.numero_ordre, 10) || null;
+      if (values.cenou !== undefined) student.cenou = String(values.cenou).trim() || null;
+      if (values.date_naissance !== undefined) {
+        const rawDate = String(values.date_naissance ?? '').trim();
+        student.date_naissance = normalizeStudentDate(values.date_naissance);
+        if (rawDate && !student.date_naissance) { skipped++; continue; }
+      }
+      if (values.lieu_naissance !== undefined) student.lieu_naissance = String(values.lieu_naissance).trim() || null;
+      if (values.passage !== undefined) student.passage = String(values.passage).trim() || null;
+      if (values.amphi !== undefined) student.amphi = String(values.amphi).trim() || null;
+
+      const { error } = await supabase.from('etudiants_officiels').upsert(student, { onConflict: 'matricule' });
 
       if (error) skipped++;
       else imported++;
