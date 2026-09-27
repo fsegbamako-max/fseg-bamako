@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase.js';
 import { uploadToStorage, deleteFromStorage, getFileType } from '../../services/storage.service.js';
+import { normalizeStudentOrder, normalizeStudentRow } from '../../utils/studentData.js';
 import xlsx from 'xlsx';
 
 // ─── Publications de documents de résultats ────────────────────────────────
@@ -91,58 +92,208 @@ export async function deleteFile(req, res, next) {
 
 // ─── Import Excel de notes individuelles ──────────────────────────────────
 
+function analyzeNotesWorkbook(buffer, identityColumnCount) {
+  const identityColumns = Number.parseInt(identityColumnCount, 10);
+  if (![6, 7].includes(identityColumns)) {
+    throw new Error('Choisissez 6 ou 7 colonnes d’identité avant les matières');
+  }
+
+  const workbook = xlsx.read(buffer, { type: 'buffer' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+  if (rows.length < 2) throw new Error('Le fichier doit contenir une ligne d’en-tête et au moins une ligne étudiant');
+
+  const headers = rows[0].map(value => String(value ?? '').trim());
+  if (headers.length <= identityColumns) throw new Error(`Aucune matière détectée après les ${identityColumns} colonnes d’identité`);
+
+  const identityHeaders = Object.fromEntries(headers.slice(0, identityColumns).map((header, index) => [header, index]));
+  const identifiers = normalizeStudentRow(identityHeaders);
+  const matriculeColumn = Number.isInteger(identifiers.matricule) ? identifiers.matricule : null;
+  const orderColumn = Number.isInteger(identifiers.numero_ordre) ? identifiers.numero_ordre : null;
+  const detectedMatriculeColumn = matriculeColumn ?? (orderColumn === null && identityColumns >= 2 ? 1 : null);
+  if (detectedMatriculeColumn === null && orderColumn === null) {
+    throw new Error('Impossible de détecter le matricule ou le numéro d’ordre dans les colonnes d’identité');
+  }
+
+  const subjects = headers.slice(identityColumns).map((header, index) => ({
+    columnIndex: identityColumns + index,
+    position: index + 1,
+    header: header || `Colonne ${identityColumns + index + 1}`,
+    samples: rows.slice(1, 5).map(row => String(row[identityColumns + index] ?? '').trim())
+  }));
+
+  return {
+    rows,
+    identityColumns,
+    matriculeColumn: detectedMatriculeColumn,
+    orderColumn,
+    subjects
+  };
+}
+
+export async function previewNotesImport(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, message: 'Fichier Excel requis' });
+    const analysis = analyzeNotesWorkbook(req.file.buffer, req.body.identity_columns);
+    res.json({
+      ok: true,
+      data: {
+        identity_columns: analysis.identityColumns,
+        identifier_type: analysis.orderColumn !== null && analysis.matriculeColumn === null ? 'numero_ordre' : 'matricule',
+        subjects: analysis.subjects
+      }
+    });
+  } catch (e) {
+    res.status(400).json({ ok: false, message: e.message || 'Impossible d’analyser le fichier' });
+  }
+}
+
 export async function importNotes(req, res, next) {
+  let importId = null;
+  let fileUrl = null;
   try {
     if (!req.file) return res.status(400).json({ ok: false, message: 'Fichier Excel requis' });
     const { id_classe, id_semestre } = req.body;
     if (!id_classe || !id_semestre) return res.status(400).json({ ok: false, message: 'Classe et semestre requis' });
-
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet    = workbook.Sheets[workbook.SheetNames[0]];
-    const rows     = xlsx.utils.sheet_to_json(sheet, { defval: null });
-
-    if (!rows.length) return res.status(400).json({ ok: false, message: 'Fichier vide ou invalide' });
-
-    // Uploader le fichier source
-    const fileUrl = await uploadToStorage(req.file.buffer, 'imports/notes', req.file.originalname, req.file.mimetype);
-    const { data: imp } = await supabase.from('imports_notes').insert({ id_classe: parseInt(id_classe), id_semestre: parseInt(id_semestre), fichier: fileUrl }).select().single();
-
-    // Colonnes = matières (sauf 'matricule' / 'Matricule')
-    const headers   = Object.keys(rows[0]).filter(h => !/^(matricule|n[°uo]|num[ée]ro)/i.test(h));
-    const matiereMap = {};
-
-    for (const col of headers) {
-      const { data: mat } = await supabase.from('matieres').insert({
-        id_import: imp.id, id_classe: parseInt(id_classe), id_semestre: parseInt(id_semestre),
-        code_colonne: col, nom_matiere: col
-      }).select().single();
-      if (mat) matiereMap[col] = mat.id;
+    const classId = parseInt(id_classe, 10);
+    const semesterId = parseInt(id_semestre, 10);
+    if (!Number.isInteger(classId) || !Number.isInteger(semesterId)) {
+      return res.status(400).json({ ok: false, message: 'Classe ou semestre invalide' });
     }
 
-    // Insérer les notes
-    const matriculeCol = Object.keys(rows[0]).find(h => /^(matricule)/i.test(h)) || Object.keys(rows[0])[0];
-    let imported = 0, errors = 0;
+    let subjectNames;
+    try { subjectNames = JSON.parse(req.body.subject_names || '[]'); }
+    catch { return res.status(400).json({ ok: false, message: 'Les noms de matières sont invalides' }); }
+    if (!Array.isArray(subjectNames) || subjectNames.some(name => typeof name !== 'string' || !name.trim())) {
+      return res.status(400).json({ ok: false, message: 'Saisissez le nom de chaque matière détectée' });
+    }
 
-    for (const row of rows) {
-      const matricule = String(row[matriculeCol] || '').trim().toUpperCase();
-      if (!matricule) continue;
+    const analysis = analyzeNotesWorkbook(req.file.buffer, req.body.identity_columns);
+    if (subjectNames.length !== analysis.subjects.length) {
+      return res.status(400).json({ ok: false, message: `Le fichier contient ${analysis.subjects.length} matières; relancez son analyse puis nommez-les toutes` });
+    }
 
-      const { data: eo } = await supabase.from('etudiants_officiels').select('id').eq('matricule', matricule).single();
-      if (!eo) { errors++; continue; }
+    const { data: previousImports, error: previousImportsError } = await supabase
+      .from('imports_notes')
+      .select('id, fichier')
+      .eq('id_classe', classId)
+      .eq('id_semestre', semesterId);
+    if (previousImportsError) throw previousImportsError;
 
-      for (const col of headers) {
-        if (!(col in matiereMap)) continue;
-        const note = parseFloat(row[col]);
-        if (isNaN(note)) continue;
-        await supabase.from('notes_etudiants').upsert({
-          id_etudiant: eo.id, id_matiere: matiereMap[col], note
-        }, { onConflict: 'id_etudiant,id_matiere' });
-        imported++;
+    fileUrl = await uploadToStorage(req.file.buffer, 'imports/notes', req.file.originalname, req.file.mimetype);
+    const { data: imp, error: importError } = await supabase.from('imports_notes').insert({
+      id_classe: classId,
+      id_semestre: semesterId,
+      fichier: fileUrl
+    }).select().single();
+    if (importError) throw importError;
+    importId = imp.id;
+
+    const subjectsToInsert = analysis.subjects.map((subject, index) => ({
+      id_import: imp.id,
+      id_classe: classId,
+      id_semestre: semesterId,
+      code_colonne: String(index + 1),
+      nom_matiere: subjectNames[index].trim()
+    }));
+    const { data: savedSubjects, error: subjectsError } = await supabase
+      .from('matieres')
+      .insert(subjectsToInsert)
+      .select('id, code_colonne');
+    if (subjectsError) throw subjectsError;
+    const subjectIds = new Map(savedSubjects.map(subject => [Number(subject.code_colonne), subject.id]));
+
+    const matricules = new Set();
+    const orders = new Set();
+    for (const row of analysis.rows.slice(1)) {
+      const matricule = analysis.matriculeColumn === null ? '' : String(row[analysis.matriculeColumn] ?? '').trim().toUpperCase();
+      const order = analysis.orderColumn === null ? '' : normalizeStudentOrder(row[analysis.orderColumn]);
+      if (matricule) matricules.add(matricule);
+      else if (order) orders.add(order);
+    }
+
+    const studentIds = new Map();
+    const lookupStudents = async (field, values, prefix) => {
+      const list = [...values];
+      for (let index = 0; index < list.length; index += 250) {
+        const { data, error } = await supabase
+          .from('etudiants_officiels')
+          .select(`id, ${field}`)
+          .eq('id_classe', classId)
+          .in(field, list.slice(index, index + 250));
+        if (error) throw error;
+        for (const student of data || []) {
+          const identifier = field === 'numero_ordre'
+            ? normalizeStudentOrder(student[field])
+            : String(student[field]).trim().toUpperCase();
+          studentIds.set(`${prefix}:${identifier}`, student.id);
+        }
+      }
+    };
+    await lookupStudents('matricule', matricules, 'M');
+    await lookupStudents('numero_ordre', orders, 'O');
+
+    const notesByStudentAndSubject = new Map();
+    let unknownStudents = 0, invalidNotes = 0;
+    for (const row of analysis.rows.slice(1)) {
+      const matricule = analysis.matriculeColumn === null ? '' : String(row[analysis.matriculeColumn] ?? '').trim().toUpperCase();
+      const order = analysis.orderColumn === null ? '' : normalizeStudentOrder(row[analysis.orderColumn]);
+      if (!matricule && !order) continue;
+      const studentId = matricule
+        ? studentIds.get(`M:${matricule}`)
+        : studentIds.get(`O:${String(order).trim().toUpperCase()}`);
+      if (!studentId) { unknownStudents++; continue; }
+
+      for (const subject of analysis.subjects) {
+        const rawNote = String(row[subject.columnIndex] ?? '').trim();
+        if (!rawNote) continue;
+        const note = Number(rawNote.replace(',', '.'));
+        if (!Number.isFinite(note) || note < 0 || note > 20) { invalidNotes++; continue; }
+        const subjectId = subjectIds.get(subject.position);
+        notesByStudentAndSubject.set(`${studentId}:${subjectId}`, {
+          id_etudiant: studentId,
+          id_matiere: subjectId,
+          note
+        });
       }
     }
 
-    res.json({ ok: true, message: `Import terminé: ${imported} notes importées, ${errors} matricules inconnus` });
-  } catch (e) { next(e); }
+    const noteRows = [...notesByStudentAndSubject.values()];
+    for (let index = 0; index < noteRows.length; index += 500) {
+      const { error } = await supabase
+        .from('notes_etudiants')
+        .upsert(noteRows.slice(index, index + 500), { onConflict: 'id_etudiant,id_matiere' });
+      if (error) throw error;
+    }
+    const imported = noteRows.length;
+
+    if (!imported) {
+      const { error: cleanupError } = await supabase.from('imports_notes').delete().eq('id', imp.id);
+      if (cleanupError) throw cleanupError;
+      importId = null;
+      await deleteFromStorage(fileUrl);
+      fileUrl = null;
+      return res.status(422).json({
+        ok: false,
+        message: `Aucune note importée. Vérifiez les identifiants et les notes entre 0 et 20. ${unknownStudents} étudiant(s) introuvable(s), ${invalidNotes} note(s) invalide(s). L’ancien relevé a été conservé.`
+      });
+    }
+
+    for (const previousImport of previousImports || []) {
+      const { error: deleteError } = await supabase.from('imports_notes').delete().eq('id', previousImport.id);
+      if (deleteError) throw deleteError;
+      if (previousImport.fichier) await deleteFromStorage(previousImport.fichier);
+    }
+
+    res.json({
+      ok: true,
+      message: `Import réussi : ${imported} note(s) enregistrée(s), ${unknownStudents} étudiant(s) introuvable(s), ${invalidNotes} note(s) invalide(s) ignorée(s)`
+    });
+  } catch (e) {
+    if (importId) await supabase.from('imports_notes').delete().eq('id', importId);
+    if (fileUrl) await deleteFromStorage(fileUrl);
+    next(e);
+  }
 }
 
 export async function listImports(req, res, next) {

@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS classes (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS etudiants_officiels (
   id             SERIAL PRIMARY KEY,
-  numero_ordre   INTEGER,
+  numero_ordre   TEXT,
   matricule      TEXT UNIQUE NOT NULL,
   cenou          TEXT,
   prenom         TEXT NOT NULL,
@@ -140,8 +140,20 @@ CREATE TABLE IF NOT EXISTS imports_etudiants (
   id_classe    INTEGER REFERENCES classes(id) ON DELETE CASCADE,
   fichier      TEXT,
   type_fichier TEXT,
+  nom_fichier  TEXT,
+  type_liste   TEXT NOT NULL DEFAULT 'partielle',
+  suivi_active BOOLEAN NOT NULL DEFAULT FALSE,
   date_import  TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS imports_etudiants_lignes (
+  id_import   INTEGER NOT NULL REFERENCES imports_etudiants(id) ON DELETE CASCADE,
+  id_etudiant INTEGER NOT NULL REFERENCES etudiants_officiels(id) ON DELETE CASCADE,
+  PRIMARY KEY (id_import, id_etudiant)
+);
+
+CREATE INDEX IF NOT EXISTS idx_imports_etudiants_lignes_import
+  ON imports_etudiants_lignes(id_import);
 
 -- ============================================================
 -- IMPORTS NOTES (bulk Excel)

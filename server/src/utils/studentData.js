@@ -23,7 +23,7 @@ function normalizeHeader(value) {
 export function normalizeStudentRow(row) {
   const normalized = {};
   for (const [header, value] of Object.entries(row)) {
-    const key = normalizeHeader(header);
+    const key = normalizeImportHeader(header);
     for (const [field, aliases] of Object.entries(headerAliases)) {
       if (aliases.has(key) && normalized[field] === undefined) {
         normalized[field] = value;
@@ -32,6 +32,19 @@ export function normalizeStudentRow(row) {
     }
   }
   return normalized;
+}
+
+export function normalizeImportHeader(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function normalizeStudentOrder(value) {
+  const order = String(value ?? '').trim().replace(/\s+/g, '').toUpperCase();
+  return order || null;
 }
 
 function toIsoDate(year, month, day) {

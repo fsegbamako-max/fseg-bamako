@@ -99,7 +99,8 @@ export async function register(req, res, next) {
     if (mot_de_passe.length < 6) {
       return res.status(400).json({ ok: false, message: 'Mot de passe trop court (6 caractères min)' });
     }
-    if (telephone && !/^[0-9]{8}$/.test(telephone)) {
+    const phone = typeof telephone === 'string' ? telephone.trim() : '';
+    if (!/^[0-9]{8}$/.test(phone)) {
       return res.status(400).json({ ok: false, message: 'Numéro de téléphone invalide (8 chiffres requis)' });
     }
 
@@ -134,7 +135,7 @@ export async function register(req, res, next) {
     const { error } = await supabase.from('comptes_etudiants').insert({
       id_etudiant:  eo.id,
       id_classe:    eo.id_classe,
-      telephone:    telephone || null,
+      telephone:    phone,
       mot_de_passe: hash,
       actif:        true
     });

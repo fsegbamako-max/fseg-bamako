@@ -20,6 +20,9 @@ export async function getProfil(req, res, next) {
     if (error || !data) {
       return res.status(404).json({ ok: false, message: 'Étudiant introuvable' });
     }
+    const compte = Array.isArray(data.comptes_etudiants)
+      ? data.comptes_etudiants[0]
+      : data.comptes_etudiants;
 
     res.json({
       ok: true,
@@ -35,10 +38,43 @@ export async function getProfil(req, res, next) {
         numero_ordre:   data.numero_ordre,
         nom_classe:     data.classes.nom_classe,
         niveau:         data.classes.niveau,
-        telephone:      data.comptes_etudiants.telephone,
-        photo_profil:   data.comptes_etudiants.photo_profil
+        telephone:      compte?.telephone ?? null,
+        photo_profil:   compte?.photo_profil ?? null
       }
     });
+  } catch (e) { next(e); }
+}
+
+export async function updateTelephone(req, res, next) {
+  try {
+    const telephone = typeof req.body.telephone === 'string' ? req.body.telephone.trim() : '';
+    if (!/^[0-9]{8}$/.test(telephone)) {
+      return res.status(400).json({ ok: false, message: 'Le numéro de téléphone doit contenir exactement 8 chiffres.' });
+    }
+
+    const { data: compte, error: compteError } = await supabase
+      .from('comptes_etudiants')
+      .select('id')
+      .eq('id_etudiant', req.etudiant.id_etudiant)
+      .eq('actif', true)
+      .eq('supprime', false)
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (compteError) throw compteError;
+    if (!compte) return res.status(404).json({ ok: false, message: 'Compte étudiant introuvable' });
+
+    const { data, error } = await supabase
+      .from('comptes_etudiants')
+      .update({ telephone, updated_at: new Date().toISOString() })
+      .eq('id', compte.id)
+      .select('telephone')
+      .single();
+
+    if (error) throw error;
+
+    res.json({ ok: true, telephone: data.telephone });
   } catch (e) { next(e); }
 }
 

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { User, Camera, Key, Phone, Calendar, MapPin, Hash, ChevronRight } from 'lucide-react';
+import { User, Camera, Key, Phone, Calendar, MapPin, Hash, ChevronRight, Pencil } from 'lucide-react';
 import { studentApi } from '../../services/api';
 import { toast } from '../../store/toastStore';
 import Spinner from '../../components/ui/Spinner';
@@ -11,6 +11,7 @@ import Modal   from '../../components/ui/Modal';
 
 export default function Profil() {
   const [pwdModal, setPwdModal] = useState(false);
+  const [telephoneModal, setTelephoneModal] = useState(false);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
   const fileRef     = useRef();
   const qc          = useQueryClient();
@@ -73,7 +74,6 @@ export default function Profil() {
             { icon: Hash,     label: 'Cenou',           value: profil?.cenou         },
             { icon: Calendar, label: 'Date de naissance', value: profil?.date_naissance },
             { icon: MapPin,   label: 'Lieu de naissance', value: profil?.lieu_naissance },
-            { icon: Phone,    label: 'Téléphone',       value: profil?.telephone     },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-center gap-3 px-4 py-3">
               <Icon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -81,6 +81,20 @@ export default function Profil() {
               <span className="text-sm text-gray-900 truncate">{value || '—'}</span>
             </div>
           ))}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="text-sm text-gray-500 w-36 shrink-0">Téléphone</span>
+            <span className="text-sm text-gray-900 truncate flex-1">{profil?.telephone || '—'}</span>
+            <button
+              type="button"
+              onClick={() => setTelephoneModal(true)}
+              aria-label="Modifier le numéro de téléphone"
+              title="Modifier le numéro de téléphone"
+              className="p-2 text-gray-500 hover:text-fseg-green"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -100,7 +114,53 @@ export default function Profil() {
       <Modal open={pwdModal} onClose={() => setPwdModal(false)} title="Changer le mot de passe">
         <PasswordForm onClose={() => setPwdModal(false)} />
       </Modal>
+      <Modal open={telephoneModal} onClose={() => setTelephoneModal(false)} title="Modifier le téléphone">
+        <TelephoneForm
+          telephone={profil?.telephone || ''}
+          onClose={() => setTelephoneModal(false)}
+          onSaved={telephone => qc.setQueryData(['profil'], old => old ? { ...old, telephone } : old)}
+        />
+      </Modal>
     </div>
+  );
+}
+
+function TelephoneForm({ telephone, onClose, onSaved }) {
+  const { register, handleSubmit, formState: { errors } } = useForm({ defaultValues: { telephone } });
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(data) {
+    setLoading(true);
+    try {
+      const res = await studentApi.updateTelephone({ telephone: data.telephone });
+      onSaved(res.data.telephone);
+      toast.success('Numéro de téléphone modifié !');
+      onClose();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la modification');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Input
+        label="Téléphone (8 chiffres)"
+        type="tel"
+        inputMode="numeric"
+        maxLength={8}
+        error={errors.telephone?.message}
+        {...register('telephone', {
+          required: 'Le numéro de téléphone est requis.',
+          pattern: { value: /^[0-9]{8}$/, message: 'Le numéro doit contenir 8 chiffres.' }
+        })}
+      />
+      <div className="flex gap-2 pt-2">
+        <Button variant="secondary" type="button" onClick={onClose} className="flex-1">Annuler</Button>
+        <Button type="submit" loading={loading} className="flex-1">Enregistrer</Button>
+      </div>
+    </form>
   );
 }
 

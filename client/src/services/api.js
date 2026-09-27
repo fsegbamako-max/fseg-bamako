@@ -66,6 +66,7 @@ export const studentApi = {
   logout:         ()         => api.post('/auth/logout'),
   changePassword: (data)     => api.post('/auth/change-password', data),
   getProfil:      ()         => api.get('/profil'),
+  updateTelephone: (data)    => api.put('/profil/telephone', data),
   updatePhoto:    (form)     => api.post('/profil/photo', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getCours:       ()         => api.get('/cours'),
   getNotes:       (semestre) => api.get(`/notes?semestre=${semestre}`),
@@ -91,13 +92,20 @@ export const admApi = {
 
   // Étudiants
   getEtudiants:    (params)     => adminApi.get('/admin/etudiants', { params }),
+  getEtudiant:     (id)         => adminApi.get(`/admin/etudiants/${id}`),
   getComptes:      ()           => adminApi.get('/admin/etudiants/comptes'),
   createEtudiant:  (data)       => adminApi.post('/admin/etudiants', data),
   updateEtudiant:  (id, data)   => adminApi.put(`/admin/etudiants/${id}`, data),
   deleteEtudiant:  (id)         => adminApi.delete(`/admin/etudiants/${id}`),
   toggleCompte:    (id, action) => adminApi.post(`/admin/etudiants/${id}/toggle`, { action }),
-  importEtudiants: (form)       => adminApi.post('/admin/etudiants/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  importEtudiants: (form)       => adminApi.post('/admin/etudiants/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  }),
   exportEtudiants: (params)     => adminApi.get('/admin/etudiants/export', { params, responseType: 'blob' }),
+  getImports:      ()           => adminApi.get('/admin/etudiants/imports'),
+  getImportStudents: (id, params) => adminApi.get(`/admin/etudiants/imports/${id}`, { params }),
+  deleteImports:   (ids)        => adminApi.delete('/admin/etudiants/imports', { data: { ids } }),
 
   // Cours
   getCours:        (params)     => adminApi.get('/admin/cours', { params }),
@@ -114,7 +122,8 @@ export const admApi = {
   deleteNote:      (id)         => adminApi.delete(`/admin/notes/${id}`),
   addFilesNote:    (id, form)   => adminApi.post(`/admin/notes/${id}/files`, form, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteFileNote:  (fileId)     => adminApi.delete(`/admin/notes/files/${fileId}`),
-  importNotes:     (form)       => adminApi.post('/admin/notes/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  previewNotesImport: (form)    => adminApi.post('/admin/notes/import/preview', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }),
+  importNotes:     (form)       => adminApi.post('/admin/notes/import', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 }),
 
   // Emplois
   getEmplois:      (params)     => adminApi.get('/admin/emplois', { params }),
