@@ -29,9 +29,13 @@ export async function createEmploi(req, res, next) {
         .in('emploi_id', (await supabase.from('emplois').select('id').eq('id_classe', parseInt(id_classe))).data?.map(e => e.id) || []);
     }
 
+    if (req.files !== undefined && !Array.isArray(req.files)) {
+      return res.status(400).json({ ok: false, message: 'Invalid files payload' });
+    }
+    const files = Array.isArray(req.files) ? req.files : [];
     const uploaded = [];
-    for (let i = 0; i < (req.files || []).length; i++) {
-      const file     = req.files[i];
+    for (let i = 0; i < files.length; i++) {
+      const file     = files[i];
       const url      = await uploadToStorage(file.buffer, 'emplois', file.originalname, file.mimetype);
       const type     = getFileType(file.mimetype);
       const pinned   = i === 0 && (is_pinned === 'true' || is_pinned === true);

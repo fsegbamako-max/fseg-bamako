@@ -1,5 +1,6 @@
 export function errorHandler(err, req, res, next) {
-  console.error(`[ERROR] ${req.method} ${req.path}:`, err.message);
+  const safeLogValue = value => String(value ?? '').replace(/[\r\n]/g, ' ');
+  console.error('[ERROR] %s %s: %s', safeLogValue(req.method), safeLogValue(req.path), safeLogValue(err?.message));
 
   if (err.name === 'MulterError') {
     return res.status(400).json({ ok: false, message: `Upload: ${err.message}` });

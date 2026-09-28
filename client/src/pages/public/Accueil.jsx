@@ -22,8 +22,13 @@ function StatBox({ target, label }) {
 }
 
 function excerpt(text, max = 200) {
-  if (!text) return '';
-  const plain = text.replace(/<[^>]*>/g, '');
+  if (typeof text !== 'string' || !text) return '';
+  let plain = text;
+  let previous;
+  do {
+    previous = plain;
+    plain = plain.replace(/<[^>]*>/g, '');
+  } while (plain !== previous);
   return plain.length > max ? plain.slice(0, max) + '…' : plain;
 }
 
