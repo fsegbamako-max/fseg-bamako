@@ -10,7 +10,7 @@ function FileIcon({ type }) {
 }
 
 function nomPropre(url) {
-  return url?.split('/').pop().replace(/^\d+_/, '') || '';
+  return url?.split('?')[0].split('/').pop().replace(/^\d+_/, '') || '';
 }
 
 export default function Documents() {

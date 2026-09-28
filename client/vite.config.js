@@ -28,20 +28,13 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*supabase\.co\/storage/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'supabase-storage',
-              expiration: { maxEntries: 100, maxAgeSeconds: 7 * 24 * 60 * 60 }
-            }
-          },
           {
             urlPattern: /\/api\//,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'api-cache-proxy-v1',
               expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 }
             }
           }

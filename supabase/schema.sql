@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS cours (
 CREATE TABLE IF NOT EXISTS fichiers_cours (
   id           SERIAL PRIMARY KEY,
   cours_id     INTEGER REFERENCES cours(id) ON DELETE CASCADE,
-  fichier      TEXT NOT NULL,  -- Supabase Storage URL
+  fichier      TEXT NOT NULL,  -- Chemin de l’objet dans Supabase Storage
   type_fichier TEXT,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -254,8 +254,6 @@ CREATE INDEX IF NOT EXISTS idx_matieres_classe  ON matieres(id_classe, id_semest
 CREATE INDEX IF NOT EXISTS idx_notes_etu        ON notes_etudiants(id_etudiant);
 
 -- ============================================================
--- ROW LEVEL SECURITY (à activer via Supabase Dashboard)
+-- ROW LEVEL SECURITY (activé par les migrations; accès API via service_role)
 -- ============================================================
--- ALTER TABLE etudiants_officiels ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE comptes_etudiants   ENABLE ROW LEVEL SECURITY;
--- Utiliser le service_role_key côté backend uniquement.
+-- SUPABASE_SERVICE_ROLE_KEY reste exclusivement côté serveur.

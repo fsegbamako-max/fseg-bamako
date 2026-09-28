@@ -1,4 +1,5 @@
-import { supabase, BUCKET } from '../config/supabase.js';
+import { supabase, SUPABASE_URL, BUCKET, FALLBACK_BUCKETS } from '../config/supabase.js';
+import jwt from 'jsonwebtoken';
 import path from 'path';
 
 /**
@@ -16,7 +17,7 @@ export function getFileType(mimetype) {
 
 /**
  * Upload un fichier Buffer vers Supabase Storage
- * @returns {string} URL publique du fichier
+ * @returns {string} chemin du fichier dans le bucket configuré
  */
 export async function uploadToStorage(buffer, folder, originalname, mimetype) {
   const ext      = path.extname(originalname).toLowerCase() || '.bin';
@@ -36,21 +37,77 @@ export async function uploadToStorage(buffer, folder, originalname, mimetype) {
     throw new Error(`Erreur Supabase Storage: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
-  return data.publicUrl;
+  return filePath;
 }
 
 /**
- * Supprime un fichier depuis son URL publique Supabase
+ * Resolve a legacy Storage URL or stored object path to a bucket path.
  */
-export async function deleteFromStorage(publicUrl) {
-  if (!publicUrl || !publicUrl.includes('supabase')) return;
+export function getStoragePath(reference) {
+  return getStorageLocation(reference)?.path ?? null;
+}
+
+export function getStorageLocation(reference) {
+  if (typeof reference !== 'string' || !reference.trim()) return null;
+
+  const value = reference.trim();
+  if (!/^https?:\/\//i.test(value)) {
+    const filePath = value.replace(/^\/+/, '');
+    return filePath ? { bucket: BUCKET, path: filePath } : null;
+  }
+
   try {
-    const url     = new URL(publicUrl);
-    const parts   = url.pathname.split(`/object/public/${BUCKET}/`);
-    if (parts.length < 2) return;
-    const filePath = decodeURIComponent(parts[1]);
-    await supabase.storage.from(BUCKET).remove([filePath]);
+    const url = new URL(value);
+    if (url.origin !== new URL(SUPABASE_URL).origin) return null;
+    const match = url.pathname.match(/\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/);
+    if (!match) return null;
+    return { bucket: decodeURIComponent(match[1]), path: decodeURIComponent(match[2]) };
+  } catch {
+    return null;
+  }
+}
+export async function resolveStorageLocation(reference) {
+  const location = getStorageLocation(reference);
+  if (!location) return null;
+
+  const buckets = [location.bucket, ...FALLBACK_BUCKETS.filter(bucket => bucket !== location.bucket)];
+  let lastError;
+  for (const bucket of buckets) {
+    const { error } = await supabase.storage.from(bucket).createSignedUrl(location.path, 60);
+    if (!error) return { bucket, path: location.path };
+    lastError = error;
+    if (String(error.statusCode) !== '404') break;
+  }
+
+  console.warn('[Storage] Signed URL failed:', lastError?.statusCode || 'unknown status', lastError?.error || 'storage error');
+  throw new Error('Impossible de créer le lien temporaire du fichier');
+}
+
+export async function createStorageSignedUrl(reference, expiresIn = 3600) {
+  const location = await resolveStorageLocation(reference);
+  if (!location) return null;
+  const { data, error } = await supabase.storage
+    .from(location.bucket)
+    .createSignedUrl(location.path, expiresIn);
+  if (error) throw new Error('Impossible de créer le lien temporaire du fichier');
+  return data.signedUrl;
+}
+
+export async function createStorageProxyToken(reference) {
+  const location = await resolveStorageLocation(reference);
+  if (!location) return null;
+  return jwt.sign({ purpose: 'storage-file', ...location }, process.env.JWT_SECRET, { expiresIn: '1h' });
+}
+
+/**
+ * Supprime un fichier depuis son URL historique ou son chemin Storage.
+ */
+export async function deleteFromStorage(reference) {
+  const location = getStorageLocation(reference);
+  if (!location) return;
+  try {
+    const { error } = await supabase.storage.from(location.bucket).remove([location.path]);
+    if (error) throw error;
   } catch (e) {
     console.warn('[Storage] Delete warning:', e.message);
   }

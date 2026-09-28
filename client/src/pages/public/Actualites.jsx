@@ -69,7 +69,7 @@ export default function Actualites() {
                 rel="noopener noreferrer"
                 className="mt-3 flex items-center gap-2 text-sm text-fseg-green hover:underline"
               >
-                📄 {f.fichier.split('/').pop().replace(/^\d+_/, '')}
+                📄 {f.fichier.split('?')[0].split('/').pop().replace(/^\d+_/, '')}
               </a>
             ))}
           </article>

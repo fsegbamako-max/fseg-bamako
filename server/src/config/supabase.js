@@ -22,4 +22,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   realtime: { transport: ws }
 });
 
+export const SUPABASE_URL = supabaseUrl;
 export const BUCKET = process.env.SUPABASE_BUCKET || 'fseg';
+export const FALLBACK_BUCKETS = (process.env.SUPABASE_FALLBACK_BUCKETS || BUCKET)
+  .split(',')
+  .map(bucket => bucket.trim())
+  .filter(bucket => bucket && bucket !== BUCKET);

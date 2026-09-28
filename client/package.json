@@ -29,5 +29,13 @@
     "tailwindcss": "^3.4.11",
     "vite": "^5.4.5",
     "vite-plugin-pwa": "^0.20.5"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  },
+  "overrides": {
+    "workbox-build": {
+      "glob": "^13.0.6"
+    }
   }
 }

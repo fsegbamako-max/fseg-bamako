@@ -58,12 +58,22 @@ Ouvrez `server/.env` et renseignez les paramètres :
 | `PORT` | Port de l’API; valeur locale par défaut : `4000`. |
 | `NODE_ENV` | Environnement; utilisez `development` en local et `production` en déploiement. |
 | `SUPABASE_BUCKET` | Nom du bucket Supabase Storage; valeur par défaut : `fseg`. |
+| `SUPABASE_FALLBACK_BUCKETS` | Buckets temporaires séparés par des virgules pendant une migration; laissez vide normalement. |
+| `PUBLIC_API_URL` | URL publique de l’API utilisée pour les liens de fichiers; en local `http://localhost:4000`, sur Render l’URL HTTPS du service. |
 
 Vous pouvez générer un secret JWT aléatoire avec Node.js :
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
+
+### Sécuriser Supabase Storage
+
+Déployez d’abord la version serveur qui génère des liens signés, puis exécutez
+les migrations Supabase dans l’ordre, dont `202609280001_storage_prive_rls.sql`.
+Cette migration rend privé le bucket `fseg` et active RLS sur les tables du
+schéma `public`. L’API utilise la clé `service_role` côté serveur; aucune clé
+`service_role` ne doit être ajoutée au client ou au dépôt.
 
 Démarrez ensuite l’API :
 

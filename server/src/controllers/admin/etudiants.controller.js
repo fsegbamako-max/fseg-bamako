@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { supabase } from '../../config/supabase.js';
-import { uploadToStorage, deleteFromStorage } from '../../services/storage.service.js';
+import { uploadToStorage, deleteFromStorage, createStorageSignedUrl } from '../../services/storage.service.js';
 import xlsx from 'xlsx';
 import { normalizeStudentDate, normalizeStudentOrder, normalizeStudentRow } from '../../utils/studentData.js';
 
@@ -195,7 +195,9 @@ async function trackLegacyImport(importRecord) {
 
   const matricules = new Set();
   if (importRecord.fichier) {
-    const response = await fetch(importRecord.fichier);
+    const signedUrl = await createStorageSignedUrl(importRecord.fichier);
+    if (!signedUrl) throw new Error('Fichier d’import introuvable');
+    const response = await fetch(signedUrl);
     if (!response.ok) throw new Error('Impossible de lire le fichier de cet ancien import');
     const workbook = xlsx.read(Buffer.from(await response.arrayBuffer()), { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];

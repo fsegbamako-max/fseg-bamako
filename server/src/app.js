@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { signStorageUrls } from './middleware/signStorageUrls.js';
+import storageRoutes from './routes/storage.routes.js';
 
 // Routes publiques (sans auth)
 import publicRoutes from './routes/public.routes.js';
@@ -65,6 +67,8 @@ app.use('/api', rateLimit({
 // ─── Body parsing ────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/api', signStorageUrls);
+app.use('/api/storage', storageRoutes);
 
 // ─── Health check ────────────────────────────────────────────
 app.get('/health', (req, res) => {
