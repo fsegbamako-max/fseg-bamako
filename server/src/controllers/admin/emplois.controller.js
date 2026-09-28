@@ -64,9 +64,13 @@ export async function addFile(req, res, next) {
   try {
     const emploi_id = parseInt(req.params.id);
     const { is_pinned } = req.body;
+    if (req.files !== undefined && !Array.isArray(req.files)) {
+      return res.status(400).json({ ok: false, message: 'Invalid files payload' });
+    }
+    const files = Array.isArray(req.files) ? req.files : [];
     const uploaded = [];
-    for (let i = 0; i < (req.files || []).length; i++) {
-      const file   = req.files[i];
+    for (let i = 0; i < files.length; i++) {
+      const file   = files[i];
       const url    = await uploadToStorage(file.buffer, 'emplois', file.originalname, file.mimetype);
       const type   = getFileType(file.mimetype);
       const pinned = is_pinned === 'true' && i === 0;
