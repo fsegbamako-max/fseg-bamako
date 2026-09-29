@@ -19,7 +19,7 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.3.0",
+    "multer": "^2.4.0",
     "ws": "^8.21.1",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
