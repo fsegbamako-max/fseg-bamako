@@ -47,7 +47,7 @@ export default function Accueil() {
     <>
       {/* ── Hero ── */}
       <section className="bg-gradient-to-b from-fseg-green to-fseg-dark text-white py-16 px-4 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+        <h2 className="max-w-4xl mx-auto text-3xl md:text-4xl font-bold leading-tight">
           Faculté des Sciences Économiques et de Gestion (FSEG)
         </h2>
         <p className="mt-4 text-white/80 text-base max-w-xl mx-auto">
@@ -143,7 +143,7 @@ export default function Accueil() {
 
       {/* ── Chiffres clés ── */}
       <section className="max-w-4xl mx-auto px-4 py-10">
-        <div className="grid grid-cols-3 gap-4 divide-x divide-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:divide-x divide-gray-100">
           <StatBox target={52600} label="Étudiants" />
           <StatBox target={137}   label="Enseignants" />
           <StatBox target={3}     label="Filières" />

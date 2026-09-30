@@ -17,7 +17,7 @@ const quickLinks = [
 
 function StatCard({ icon: Icon, label, value, color }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 transition-shadow duration-200 hover:shadow-md">
       <div className={`${color} text-white rounded-xl p-3`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -50,11 +50,11 @@ export default function AdminDashboard() {
         <div className="flex justify-center py-16"><Spinner /></div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={Users}       label="Étudiants inscrits"  value={stats?.total_etudiants?.toLocaleString()} color="bg-blue-500" />
-          <StatCard icon={UserCheck}   label="Comptes actifs"      value={stats?.comptes_actifs?.toLocaleString()}  color="bg-emerald-500" />
-          <StatCard icon={GraduationCap} label="Classes"           value={stats?.total_classes}  color="bg-purple-500" />
-          <StatCard icon={BookOpen}    label="Cours publiés"       value={stats?.total_cours}    color="bg-orange-500" />
-          <StatCard icon={BarChart2}   label="Publications notes"  value={stats?.total_notes}    color="bg-red-500" />
+          <StatCard icon={Users}       label="Étudiants inscrits"  value={stats?.total_etudiants?.toLocaleString()} color="bg-fseg-green" />
+          <StatCard icon={UserCheck}   label="Comptes actifs"      value={stats?.comptes_actifs?.toLocaleString()}  color="bg-teal-700" />
+          <StatCard icon={GraduationCap} label="Classes"           value={stats?.total_classes}  color="bg-amber-600" />
+          <StatCard icon={BookOpen}    label="Cours publiés"       value={stats?.total_cours}    color="bg-cyan-800" />
+          <StatCard icon={BarChart2}   label="Publications notes"  value={stats?.total_notes}    color="bg-rose-700" />
         </div>
       )}
 
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {quickLinks.map(({ to, icon: Icon, label }) => (
-            <Link key={to} to={to} className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-4 text-sm font-medium text-gray-700 hover:border-fseg-green/50 hover:text-fseg-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fseg-green">
+            <Link key={to} to={to} className="flex min-h-16 items-center gap-3 bg-white border border-gray-200 rounded-lg p-4 text-sm font-medium text-gray-700 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm hover:border-fseg-green/50 hover:text-fseg-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fseg-green">
               <Icon className="w-4 h-4 shrink-0" />
               {label}
             </Link>

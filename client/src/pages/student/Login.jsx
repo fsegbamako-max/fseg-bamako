@@ -84,12 +84,14 @@ export default function StudentLogin() {
                 placeholder="Votre mot de passe"
                 autoComplete="current-password"
                 error={errors.mot_de_passe?.message}
+                className="pr-14"
                 {...register('mot_de_passe', { required: 'Mot de passe requis' })}
               />
               <button
                 type="button"
                 onClick={() => setShowPwd(p => !p)}
-                className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="absolute right-2 top-6 min-h-11 min-w-11 grid place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
               >
                 {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>

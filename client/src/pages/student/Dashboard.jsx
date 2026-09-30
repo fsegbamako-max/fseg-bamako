@@ -5,10 +5,10 @@ import { studentApi } from '../../services/api';
 import Spinner from '../../components/ui/Spinner';
 
 const tiles = [
-  { to: '/etudiants/cours',  icon: BookOpen,  label: 'Cours',            color: 'bg-blue-500',    bg: 'bg-blue-50'    },
-  { to: '/etudiants/notes',  icon: BarChart2, label: 'Notes',            color: 'bg-emerald-500', bg: 'bg-emerald-50' },
-  { to: '/etudiants/emploi', icon: Calendar,  label: 'Emploi du temps',  color: 'bg-purple-500',  bg: 'bg-purple-50'  },
-  { to: '/etudiants/profil', icon: User,      label: 'Mon profil',       color: 'bg-orange-500',  bg: 'bg-orange-50'  },
+  { to: '/etudiants/cours',  icon: BookOpen,  label: 'Cours',            color: 'bg-fseg-green', bg: 'bg-fseg-light' },
+  { to: '/etudiants/notes',  icon: BarChart2, label: 'Notes',            color: 'bg-teal-700',   bg: 'bg-teal-50'    },
+  { to: '/etudiants/emploi', icon: Calendar,  label: 'Emploi du temps',  color: 'bg-amber-600',  bg: 'bg-amber-50'   },
+  { to: '/etudiants/profil', icon: User,      label: 'Mon profil',       color: 'bg-cyan-800',   bg: 'bg-cyan-50'    },
 ];
 
 export default function Dashboard() {
@@ -25,7 +25,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-5 pb-2 animate-fade-in">
+    <div className="max-w-3xl mx-auto px-4 pt-5 pb-2 animate-fade-in">
       {/* Header greeting */}
       <div className="flex items-center gap-3 mb-6">
         {profilData?.photo_profil ? (
@@ -49,12 +49,12 @@ export default function Dashboard() {
       </div>
 
       {/* Quick actions grid */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {tiles.map(({ to, icon: Icon, label, color, bg }) => (
           <button
             key={to}
             onClick={() => navigate(to)}
-            className={`${bg} rounded-2xl p-4 flex flex-col items-start gap-3 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-sm`}
+            className={`${bg} min-h-32 rounded-2xl p-4 flex flex-col items-start gap-3 text-left hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fseg-green`}
           >
             <div className={`${color} text-white rounded-xl p-2`}>
               <Icon className="w-5 h-5" />

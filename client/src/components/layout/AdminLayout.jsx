@@ -39,7 +39,7 @@ export default function AdminLayout() {
       )}
 
       {/* Sidebar */}
-      <aside id="admin-sidebar" className={`fixed inset-y-0 left-0 h-full w-64 bg-fseg-green text-white z-50 flex-col transition-transform duration-300
+      <aside id="admin-sidebar" className={`fixed inset-y-0 left-0 h-full w-64 bg-fseg-dark text-white z-50 flex-col border-r border-white/10 transition-transform duration-300
         ${sidebarOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'} md:flex md:translate-x-0`}>
 
         {/* Logo */}
@@ -65,8 +65,8 @@ export default function AdminLayout() {
               end={exact}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors
-                 ${isActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`
+                `mx-2 flex min-h-11 items-center gap-3 rounded-r-lg border-l-2 px-3 py-2.5 text-sm font-medium transition-colors
+                 ${isActive ? 'border-fseg-gold bg-white/15 text-white' : 'border-transparent text-white/75 hover:text-white hover:bg-white/10'}`
               }
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -86,7 +86,7 @@ export default function AdminLayout() {
               <p className="text-xs text-white/50">Administrateur</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-white/70 hover:text-white text-sm w-full">
+          <button onClick={handleLogout} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-white/75 hover:text-white hover:bg-white/10 text-sm w-full transition-colors">
             <LogOut className="w-4 h-4" />
             Se déconnecter
           </button>
@@ -96,14 +96,14 @@ export default function AdminLayout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 md:ml-64">
         {/* Top bar */}
-        <header className="fixed top-0 left-0 right-0 md:left-64 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 z-30 shadow-sm">
-          <button onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu" aria-controls="admin-sidebar" aria-expanded={sidebarOpen} className="md:hidden text-gray-500 hover:text-gray-700">
+        <header className="fixed top-0 left-0 right-0 md:left-64 bg-white border-b border-gray-100 px-4 py-2.5 flex items-center gap-3 z-30 shadow-sm min-h-[3.25rem]">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu" aria-controls="admin-sidebar" aria-expanded={sidebarOpen} className="md:hidden min-h-11 min-w-11 grid place-items-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900">
             <Menu className="w-5 h-5" />
           </button>
           <span className="text-sm text-gray-500">Panel d'administration</span>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 pt-16 md:p-6 md:pt-16">
+        <main className="flex-1 min-w-0 overflow-auto p-4 pt-16 md:p-6 md:pt-16 animate-fade-in">
           <Outlet />
         </main>
       </div>

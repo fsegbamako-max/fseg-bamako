@@ -2,12 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --fseg-ink: #183126;
+  --fseg-green: #0d6b3a;
+  --fseg-green-dark: #0a5230;
+  --fseg-green-soft: #e8f5ee;
+  --fseg-gold: #d89a22;
+  --fseg-canvas: #f5f8f6;
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
-  body { @apply font-sans text-gray-900 bg-gray-50 antialiased; margin: 0; padding: 0; }
+  body {
+    @apply font-sans antialiased;
+    color: var(--fseg-ink);
+    background: var(--fseg-canvas);
+    margin: 0;
+    padding: 0;
+  }
   img { display: block; max-width: 100%; }
 }
+
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 3px solid var(--fseg-gold);
+  outline-offset: 3px;
+}
+
+::selection { color: var(--fseg-ink); background: #f5dfb2; }
 
 @layer utilities {
   .safe-pb  { padding-bottom: env(safe-area-inset-bottom, 0); }
@@ -23,7 +47,20 @@
   }
 }
 
-/* Scrollbar thin */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+.rounded-2xl, .rounded-xl { border-radius: 0.5rem; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }
-::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
+::-webkit-scrollbar-thumb { background: #c3d4ca; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #91ad9b; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
