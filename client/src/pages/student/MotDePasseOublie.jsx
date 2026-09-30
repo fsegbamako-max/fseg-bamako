@@ -99,6 +99,18 @@ export default function MotDePasseOublie() {
                   error={verifForm.formState.errors.date_naissance?.message}
                   {...verifForm.register('date_naissance', { required: 'Date de naissance requise' })}
                 />
+                <Input
+                  label="Téléphone enregistré"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={8}
+                  placeholder="8 chiffres"
+                  error={verifForm.formState.errors.telephone?.message}
+                  {...verifForm.register('telephone', {
+                    required: 'Téléphone requis',
+                    pattern: { value: /^[0-9]{8}$/, message: 'Saisissez les 8 chiffres du téléphone enregistré.' }
+                  })}
+                />
                 <Button type="submit" loading={loading} className="w-full mt-2">
                   Vérifier
                 </Button>

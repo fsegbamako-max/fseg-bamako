@@ -217,28 +217,36 @@ export async function changePassword(req, res, next) {
 // que le front doit renvoyer à l'étape 2.
 export async function forgotPassword(req, res, next) {
   try {
-    const { matricule, nom, prenom, date_naissance } = req.body;
-    if (!matricule || !nom || !prenom || !date_naissance) {
-      return res.status(400).json({ ok: false, message: 'Tous les champs sont obligatoires' });
-    }
+    const { matricule, nom, prenom, date_naissance, telephone } = req.body;
+    const invalidInfo = () => res.status(400).json({ ok: false, message: 'Informations incorrectes.' });
+    const phone = typeof telephone === 'string' ? telephone.trim() : '';
+    if (!matricule || !nom || !prenom || !date_naissance || !/^[0-9]{8}$/.test(phone)) return invalidInfo();
 
-    const { data: e } = await supabase
+    const { data: e, error: studentError } = await supabase
       .from('etudiants_officiels')
       .select('id, nom, prenom, date_naissance')
       .eq('matricule', matricule.trim().toUpperCase())
-      .single();
+      .maybeSingle();
+    if (studentError) throw studentError;
+    if (!e) return invalidInfo();
 
-    if (!e) return res.status(404).json({ ok: false, message: 'Matricule incorrect' });
-    if (e.nom.localeCompare(nom.trim(), undefined, { sensitivity: 'base' }) !== 0) {
-      return res.status(400).json({ ok: false, message: 'Nom incorrect' });
-    }
-    if (e.prenom.localeCompare(prenom.trim(), undefined, { sensitivity: 'base' }) !== 0) {
-      return res.status(400).json({ ok: false, message: 'Prénom incorrect' });
-    }
+    const { data: account, error: accountError } = await supabase
+      .from('comptes_etudiants')
+      .select('telephone, actif, supprime')
+      .eq('id_etudiant', e.id)
+      .maybeSingle();
+    if (accountError) throw accountError;
     const expectedDate = normalizeStudentDate(date_naissance);
-    if (!expectedDate || normalizeStudentDate(e.date_naissance) !== expectedDate) {
-      return res.status(400).json({ ok: false, message: 'Date de naissance incorrecte' });
-    }
+    const validIdentity = e.nom.localeCompare(nom.trim(), undefined, { sensitivity: 'base' }) === 0
+      && e.prenom.localeCompare(prenom.trim(), undefined, { sensitivity: 'base' }) === 0
+      && Boolean(expectedDate)
+      && normalizeStudentDate(e.date_naissance) === expectedDate
+      && account
+      && account.actif
+      && !account.supprime
+      && typeof account.telephone === 'string'
+      && account.telephone.trim() === phone;
+    if (!validIdentity) return invalidInfo();
 
     const resetToken = jwt.sign(
       { role: 'reset', id_etudiant: e.id },

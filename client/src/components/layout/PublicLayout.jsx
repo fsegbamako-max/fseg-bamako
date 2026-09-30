@@ -65,15 +65,9 @@ export default function PublicLayout() {
               <div className="border-t border-gray-100 mt-1 pt-2 flex flex-col gap-1">
                 <Link
                   to="/etudiants/connexion"
-                  className="px-4 py-3 rounded-xl text-sm font-semibold text-fseg-green border-2 border-fseg-green hover:bg-fseg-light transition-colors text-center"
-                >
-                  Connexion étudiant
-                </Link>
-                <Link
-                  to="/admin/connexion"
                   className="px-4 py-3 rounded-xl text-sm font-semibold bg-fseg-green text-white hover:bg-fseg-dark transition-colors text-center"
                 >
-                  Connexion admin
+                  Connexion étudiant
                 </Link>
               </div>
             </nav>
